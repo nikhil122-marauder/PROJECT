@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import pickle
 import mlflow
-
+import uvicorn
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import time
 
@@ -177,6 +177,4 @@ def forecast_bus_basic(req: RangeRequest):
         # optionally log full predictions
         mlflow.log_dict(out, "predictions.json")
     return {"forecast_bus_basic": out}
-
-
 

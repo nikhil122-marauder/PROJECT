@@ -1,0 +1,41 @@
+name: Automated Retraining Trigger
+
+on:
+  schedule:
+    - cron: '0 3 * * *'    # Every day at 03:00 UTC
+  workflow_dispatch:       # Also allow manual trigger
+
+jobs:
+  check-and-retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install mlflow pandas
+
+      - name: Check for drift
+        id: drift
+        run: |
+          DRIFT=$(python scripts/check_drift.py)
+          echo "$DRIFT" >> $GITHUB_OUTPUT
+
+      - name: Trigger retrain workflow
+        if: steps.drift.outputs.drift_detected == 'true'
+        uses: peter-evans/workflow-dispatch@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          workflow: retrain-pipeline.yml   # your full retraining workflow
+          ref: main
+          inputs: |
+            # optionally pass inputs to your retrain workflow
+            run_notebooks: 'true'
