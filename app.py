@@ -5,7 +5,8 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 import pandas as pd
 import pickle
-import uvicorn
+import mlflow
+
 
 # 1. Load all four models (pickle files)
 with open("tube_prophet_model.pkl", "rb") as f:
@@ -68,6 +69,16 @@ def forecast_tube_full2024():
     )
     forecast = tube_model_full.predict(future)
     out = forecast[forecast["ds"].dt.year == 2024][["ds","yhat"]]
+    # 4) Log to MLflow
+    with mlflow.start_run(run_name="api_tube_full", nested=True):
+        mlflow.set_tag("endpoint", "tube_full")
+        # summary stats
+        y = forecast["yhat"]
+        mlflow.log_metric("yhat_mean",    float(y.mean()))
+        mlflow.log_metric("yhat_min",     float(y.min()))
+        mlflow.log_metric("yhat_max",     float(y.max()))
+        # optionally log full predictions
+        mlflow.log_dict(out, "predictions.json")
     return {"forecast_tube_full2024": out.to_dict(orient="records")}
 
 @app.get("/forecast/bus/full2024")
@@ -80,6 +91,16 @@ def forecast_bus_full2024():
     )
     forecast = bus_model_full.predict(future)
     out = forecast[forecast["ds"].dt.year == 2024][["ds","yhat"]]
+    # 4) Log to MLflow
+    with mlflow.start_run(run_name="api_bus_full", nested=True):
+        mlflow.set_tag("endpoint", "bus_full")
+        # summary stats
+        y = forecast["yhat"]
+        mlflow.log_metric("yhat_mean",    float(y.mean()))
+        mlflow.log_metric("yhat_min",     float(y.min()))
+        mlflow.log_metric("yhat_max",     float(y.max()))
+        # optionally log full predictions
+        mlflow.log_dict(out, "predictions.json")
     return {"forecast_bus_full2024": out.to_dict(orient="records")}
 
 # 4b. Basic‐regressor endpoints (dynamic dates)
@@ -93,6 +114,17 @@ def forecast_tube_basic(req: RangeRequest):
     forecast = tube_model_basic.predict(df_basic)
     # 3) Return those same req.periods rows
     out = forecast[["ds", "yhat"]].to_dict(orient="records")
+    # 4) Log to MLflow
+    with mlflow.start_run(run_name="api_tube_basic", nested=True):
+        mlflow.set_tag("endpoint", "tube_basic")
+        mlflow.log_param("periods", req.periods)
+        # summary stats
+        y = forecast["yhat"]
+        mlflow.log_metric("yhat_mean",    float(y.mean()))
+        mlflow.log_metric("yhat_min",     float(y.min()))
+        mlflow.log_metric("yhat_max",     float(y.max()))
+        # optionally log full predictions
+        mlflow.log_dict(out, "predictions.json")
     return {"forecast_tube_basic": out}
 
 @app.post("/forecast/bus/basic")
@@ -101,9 +133,18 @@ def forecast_bus_basic(req: RangeRequest):
     df_basic = make_basic_regressors(dates)
     forecast = bus_model_basic.predict(df_basic)
     out = forecast[["ds", "yhat"]].to_dict(orient="records")
+    # 4) Log to MLflow
+    with mlflow.start_run(run_name="api_bus_basic", nested=True):
+        mlflow.set_tag("endpoint", "bus_basic")
+        mlflow.log_param("periods", req.periods)
+        # summary stats
+        y = forecast["yhat"]
+        mlflow.log_metric("yhat_mean",    float(y.mean()))
+        mlflow.log_metric("yhat_min",     float(y.min()))
+        mlflow.log_metric("yhat_max",     float(y.max()))
+        # optionally log full predictions
+        mlflow.log_dict(out, "predictions.json")
     return {"forecast_bus_basic": out}
 
 
-# # Uncomment to run locally:
-# if __name__ == "__main__":
-#     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+\
