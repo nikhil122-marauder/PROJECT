@@ -1,12 +1,42 @@
 # app.py
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import pandas as pd
 import pickle
 import mlflow
 
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import time
+
+# Define Prometheus metrics
+REQUEST_COUNT = Counter(
+    "api_request_count", 
+    "Total number of API requests", 
+    ["endpoint"]
+)
+REQUEST_LATENCY = Histogram(
+    "api_request_latency_seconds", 
+    "Latency of API requests in seconds", 
+    ["endpoint"]
+)
+
+# Middleware to record metrics
+@app.middleware("http")
+async def prometheus_middleware(request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    endpoint = request.url.path
+    REQUEST_COUNT.labels(endpoint=endpoint).inc()
+    REQUEST_LATENCY.labels(endpoint=endpoint).observe(time.time() - start)
+    return response
+
+# Expose /metrics for Prometheus to scrape
+@app.get("/metrics")
+def metrics():
+    payload = generate_latest()
+    return Response(payload, media_type=CONTENT_TYPE_LATEST)
 
 # 1. Load all four models (pickle files)
 with open("tube_prophet_model.pkl", "rb") as f:
@@ -147,4 +177,4 @@ def forecast_bus_basic(req: RangeRequest):
     return {"forecast_bus_basic": out}
 
 
-\
+
