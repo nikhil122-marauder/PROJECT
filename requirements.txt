@@ -5,3 +5,4 @@ pandas
 numpy
 scikit-learn
 mlflow
+prometheus-client>=0.16.0
