@@ -30,12 +30,14 @@ jobs:
 
       - name: Trigger retrain workflow
         if: steps.drift.outputs.drift_detected == 'true'
-        uses: peter-evans/workflow-dispatch@v1
+        uses: actions/github-script@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          workflow: retrain-pipeline.yml   # your full retraining workflow
-          ref: main
-          inputs: |
-            # optionally pass inputs to your retrain workflow
-            run_notebooks: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              workflow_id: 'retrain-pipeline.yml',
+              ref:        'main',
+              inputs:     { run_notebooks: 'true' }
+            });
